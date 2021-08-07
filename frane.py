@@ -74,8 +74,8 @@ class FRANe:
                 Otherwise, only the best (according to the max span heuristic) are.
         """
         # check if metric is known
-        if metric in threshold_dict.keys():
-            metric = threshold_dict[metric]
+        if metric in convert_metrices.keys():
+            metric = convert_metrices[metric]
 
         # set variables
         self.iterations = iterations

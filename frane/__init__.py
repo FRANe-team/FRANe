@@ -8,6 +8,5 @@ __version__ = "0.1.0"
 __author__ = 'Urh Primožič, Blaž Šrklj, Sašo Džeroski, Matej Petkovič'
 __credits__ = 'Jozef Stefan Institute'
 
-from .frane import *
-from .thresholds import *
 from .helpers import *
+from .frane import *

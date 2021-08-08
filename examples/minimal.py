@@ -1,11 +1,8 @@
-import frane
+from frane import FRANe
 import numpy as np
 
-#from frane import FRANe
-#from helpers import load_data
-
-x = np.random.random((100,1000))
-r = frane.FRANe()
+x = np.random.random((100, 1000))
+r = FRANe()
 r.fit(x)
 scores = r.feature_importances_
 print(scores)

@@ -9,7 +9,7 @@ setup(
     version='0.1.0',    
     description='Unsupervised Feature Ranking via Attribute Networks',
     url='https://github.com/FRANe-team/FRANe',
-    author='Blaž Šrklj, Sašo Đerovski, Urh Primožič, Matej Petkovič',
+    author='Urh Primožič, Blaž Šrklj, Sašo Džeroski, Matej Petkovič',
     author_email='urh.primozic@student.fmf.uni-lj.si',
     license='BSD 2-clause',
     packages=['frane'],

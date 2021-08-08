@@ -21,15 +21,15 @@ The implementation requires some standard scientific libraries
 The method is easy to use:
 
 ```
-from frane import FRANe
-from helpers import load_data
+import frane
+import numpy as np
 
-
-x = load_data("../data/lung_small.mat")
-r = FRANe()
+x = np.random.random((100,1000))
+r = frane.FRANe()
 r.fit(x)
 scores = r.feature_importances_
 print(scores)
+
 ```
 
-See `code/example.py` for a more detailed example.
+See `examples` for more examples. To run tests, please try `pytest ./tests/*`

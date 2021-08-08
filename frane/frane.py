@@ -4,10 +4,9 @@ import numpy as np
 import tqdm
 import logging
 from scipy.spatial.distance import pdist, squareform
-from thresholds import threshold_dict
-from helpers import normalize, convert_metrices
+from .thresholds import threshold_dict
+from .helpers import normalize, convert_metrices
 
-# TODO should we remove logging cuz it slow?
 logging.basicConfig(format='%(asctime)s - %(message)s',
                     datefmt='%d-%b-%y %H:%M:%S')
 logging.getLogger().setLevel(logging.INFO)

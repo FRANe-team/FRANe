@@ -2,11 +2,10 @@
 
 import numpy as np
 import tqdm
-from scipy.spatial.distance import pdist, squareform, euclidean, canberra, cityblock, minkowski, \
-    seuclidean, sqeuclidean, correlation, chebyshev
 import logging
+from scipy.spatial.distance import pdist, squareform
 from thresholds import threshold_dict
-from helpers import normalize
+from helpers import normalize, convert_metrices
 
 # TODO should we remove logging cuz it slow?
 logging.basicConfig(format='%(asctime)s - %(message)s',
@@ -16,19 +15,6 @@ logging.getLogger().setLevel(logging.INFO)
 
 def set_value(value, default):
     return default if value is None else value
-
-
-# TODO - a pustimo, da žere in stringe in funkcije?
-convert_metrices = {
-    'euclidean': euclidean,
-    'canberra': canberra,
-    'cityblock': cityblock,
-    'minkowski': minkowski,
-    'seuclidean': seuclidean,
-    'sqeuclidean': sqeuclidean,
-    'correlation': correlation,
-    "chebyshev": chebyshev
-}
 
 
 class FRANe:
@@ -73,9 +59,11 @@ class FRANe:
                 If set to True, the scores from every fit_page_rank iteration are stored.
                 Otherwise, only the best (according to the max span heuristic) are.
         """
-        # check if metric is known
+        # check if metric ot threshold function is known
         if metric in convert_metrices.keys():
             metric = convert_metrices[metric]
+        if threshold_function in threshold_dict.keys():
+            threshold_function = threshold_dict[threshold_function]
 
         # set variables
         self.iterations = iterations

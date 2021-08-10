@@ -9,7 +9,8 @@ from .helpers import normalize, convert_metrices
 
 logging.basicConfig(format='%(asctime)s - %(message)s',
                     datefmt='%d-%b-%y %H:%M:%S')
-logging.getLogger().setLevel(logging.INFO)
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 
 def set_value(value, default):
@@ -62,11 +63,11 @@ class FRANe:
                 If set to True, the scores from every fit_page_rank iteration are stored.
                 Otherwise, only the best (according to the max span heuristic) are.
         """
-        
+
         # check if metric ot threshold function is known
         if metric in convert_metrices.keys():
             metric = convert_metrices[metric]
-            
+
         if threshold_function in threshold_dict.keys():
             threshold_function = threshold_dict[threshold_function]
 
@@ -95,13 +96,13 @@ class FRANe:
         modified.sort(reverse=True)
         if len(importance_scores) <= 2:
             return modified[0] / modified[-1]
-        
+
         else:
-            
+
             # median of the top and bottom three scores
             return modified[1] / modified[-2]
 
-    def fit(self, data, transpose=True):
+    def fit(self, data, transpose=True, verbose=False):
         """
         Computes feature ranking.
 
@@ -115,13 +116,16 @@ class FRANe:
             Set this to True if and only if the columns in the data correspond to features
             (and rows to the examples).
 
+        verbose bool
+            If true, fit() prints progress logs.
+
         Returns
         -------
             self
         """
-        return self.fit_page_rank(data, transpose=transpose)
+        return self.fit_page_rank(data, transpose=transpose, verbose=verbose)
 
-    def fit_page_rank(self, data, transpose=True):
+    def fit_page_rank(self, data, transpose=True, verbose=False):
         """
 
         Parameters
@@ -134,11 +138,13 @@ class FRANe:
             Set this to True if and only if the columns in the data correspond to features
             (and rows to the examples).
 
+        verbose bool
+            If true, fit_page_rank() prints progress logs.
+
         Returns
         -------
             self
         """
-        
         if transpose:
             data = np.transpose(data)
         n_features, n_examples = data.shape
@@ -158,14 +164,14 @@ class FRANe:
         distances = squareform(pdist(data, self.distance_metric))
         if np.isnan(distances).any():
             raise ValueError("Distances must not be nan!")
-        
+
         if np.min(distances, axis=None) < 0.0:
             raise ValueError("Distances must be non-negative")
 
         distances_copy = distances.copy()
         sorted_indexes = np.argsort(distances, axis=None)
         d_max = np.max(distances, axis=None)
-        
+
         # trick for non zero min
         distances_copy[distances_copy == 0.0] = d_max + 1.0
         d_min = np.min(distances_copy, axis=None)
@@ -176,31 +182,30 @@ class FRANe:
         solutions = []
         for threshold in tqdm.tqdm(thresholds):
             distances_copy = distances.copy()
-            
+
             # Weights on the edges: d_max - distance
             # To ignore the edges with distance > threshold:
             distances_copy[distances > threshold] = d_max
-            
+
             if self.page_rank_no_weights:
-                
+
                 # Make everything 1, so that all the weights are also (zero or) one
                 distances_copy[distances_copy <= threshold] = 1.0
             weights = d_max - distances_copy
-            
+
             # ignore self-similarities of the node
             np.fill_diagonal(weights, 0.0)
             degrees = np.sum(weights, axis=0)
             n_edges = np.sum(weights > 0.0)
             not_enough_edges = n_edges < self.min_edge_threshold * n_features
-            
+
             if not_enough_edges and not self.save_all_scores:
                 continue
-            
-            logging.debug(
-                f"Generated a |G| = {n_features} and |E| = {n_edges} graph.")
-            
+            if verbose:
+                logger.info(
+                    f"Generated a |G| = {n_features} and |E| = {n_edges} graph.")
             degrees[degrees == 0.0] = 1.0  # does not matter what
-            
+
             # define matrix and vector from the page rank iteration
             matrix = self.page_rank_decay * (weights / degrees)
             del weights
@@ -212,7 +217,7 @@ class FRANe:
             iterations = 0
             eps = 10**-10
             converged = False
-            
+
             while iterations < self.page_rank_iterations:
                 iterations += 1
                 previous = solution.copy()
@@ -221,36 +226,36 @@ class FRANe:
                 if np.max(np.abs(solution - previous)) < eps:
                     converged = True
                     break
-                
-            if converged:
-                logging.debug(
-                    f"Procedure has converged after {iterations} iterations.")
-            else:
-                logging.warning(
-                    f"Procedure has not converged after {iterations} iterations."
-                )
-                
+            if verbose:
+                if converged:
+                    logger.info(
+                        f"Procedure has converged after {iterations} iterations.")
+                else:
+                    logger.warning(
+                        f"Procedure has not converged after {iterations} iterations."
+                    )
+
             quality = FRANe.ranking_quality_heuristic(solution)
             solutions.append((quality, threshold, not_enough_edges, solution))
-            
+
         if self.save_all_scores:
-            
+
             self.feature_importances_ = [
                 solution[-1] for solution in solutions
             ]
-            
+
             self.meta_data = [(solution[0], solution[2])
                               for solution in solutions]
         else:
-            
+
             # we want as large spread as possible
             solutions.sort(key=lambda triplet: -triplet[0])
             if not solutions:
-                
-                logging.error("No feature rankings!")
+                if verbose:
+                    logger.error("No feature rankings!")
                 self.feature_importances_ = np.ones(n_features)
-                
+
             else:
                 self.feature_importances_ = solutions[0][-1]
-                
+
         return self

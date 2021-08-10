@@ -25,6 +25,18 @@ def normalize(x, metric):
 
 
 def load_data(data_file):
+    '''
+    Loads mat file from /data/ 
+
+    Parameters
+    ----------
+    data_file str 
+        FIlename of the mat file
+
+    Returns
+    --------
+    np.ndarray where rows are examples and colums are features
+    '''
     return scipy.io.loadmat(data_file)["X"].astype(np.float32)
 
 

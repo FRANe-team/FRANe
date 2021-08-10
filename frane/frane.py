@@ -12,6 +12,11 @@ logging.basicConfig(format='%(asctime)s - %(message)s',
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
+# constants
+VERBOSE_LEVEL_NOTHING = 0
+VERBOSE_LEVEL_BAR = 1
+VERBOSE_LEVEL_VERBOSE = 2
+
 
 def set_value(value, default):
     return default if value is None else value
@@ -102,7 +107,7 @@ class FRANe:
             # median of the top and bottom three scores
             return modified[1] / modified[-2]
 
-    def fit(self, data, transpose=True, verbose=False):
+    def fit(self, data, transpose=True, verbose=0):
         """
         Computes feature ranking.
 
@@ -116,8 +121,12 @@ class FRANe:
             Set this to True if and only if the columns in the data correspond to features
             (and rows to the examples).
 
-        verbose bool
-            If true, fit() prints progress logs.
+        verbose int
+            Logging level\n
+            VERBOSE_LEVEL_NOTHING - no output\n
+            VERBOSE_LEVEL_BAR - show iteration progress bar\n
+            VERBOSE_LEVEL_VERBOSE - logs results of every iteration\n
+            other - no output
 
         Returns
         -------
@@ -125,7 +134,7 @@ class FRANe:
         """
         return self.fit_page_rank(data, transpose=transpose, verbose=verbose)
 
-    def fit_page_rank(self, data, transpose=True, verbose=False):
+    def fit_page_rank(self, data, transpose=True, verbose=0):
         """
 
         Parameters
@@ -138,8 +147,12 @@ class FRANe:
             Set this to True if and only if the columns in the data correspond to features
             (and rows to the examples).
 
-        verbose bool
-            If true, fit_page_rank() prints progress logs.
+        verbose int
+            Logging level\n
+            VERBOSE_LEVEL_NOTHING - no output\n
+            VERBOSE_LEVEL_BAR - show iteration progress bar\n
+            VERBOSE_LEVEL_VERBOSE - logs results of every iteration\n
+            other - no output
 
         Returns
         -------
@@ -160,7 +173,7 @@ class FRANe:
                     # something that is not correlated to anything
                     data[i] = np.random.rand(n_examples)
 
-        if verbose:
+        if verbose in [VERBOSE_LEVEL_VERBOSE, VERBOSE_LEVEL_BAR] :
             logger.info("Calculating distances..")
         # calculates distances between features
         distances = squareform(pdist(data, self.distance_metric))
@@ -182,7 +195,7 @@ class FRANe:
 
         # FRANe iterations
         solutions = []
-        for threshold in tqdm.tqdm(thresholds, total=len(thresholds), colour='green'):
+        for threshold in tqdm.tqdm(thresholds, total=len(thresholds), colour='green', disable=(not verbose==VERBOSE_LEVEL_BAR)):
             distances_copy = distances.copy()
 
             # Weights on the edges: d_max - distance
@@ -203,7 +216,7 @@ class FRANe:
 
             if not_enough_edges and not self.save_all_scores:
                 continue
-            if verbose:
+            if verbose == VERBOSE_LEVEL_VERBOSE:
                 logger.info(
                     f"Generated a |G| = {n_features} and |E| = {n_edges} graph.")
             degrees[degrees == 0.0] = 1.0  # does not matter what
@@ -228,7 +241,7 @@ class FRANe:
                 if np.max(np.abs(solution - previous)) < eps:
                     converged = True
                     break
-            if verbose:
+            if verbose == VERBOSE_LEVEL_VERBOSE:
                 if converged:
                     logger.info(
                         f"Procedure has converged after {iterations} iterations.")
@@ -253,7 +266,7 @@ class FRANe:
             # we want as large spread as possible
             solutions.sort(key=lambda triplet: -triplet[0])
             if not solutions:
-                if verbose:
+                if verbose == VERBOSE_LEVEL_VERBOSE:
                     logger.error("No feature rankings!")
                 self.feature_importances_ = np.ones(n_features)
 

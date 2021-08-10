@@ -33,3 +33,6 @@ print(scores)
 ```
 
 See `examples` for more examples. To run tests, please try `pytest ./tests/*`
+
+# Data
+The data in the directory `data` was taken from [sk-feature](https://github.com/jundongl/scikit-feature) repository.

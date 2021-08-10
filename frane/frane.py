@@ -160,6 +160,8 @@ class FRANe:
                     # something that is not correlated to anything
                     data[i] = np.random.rand(n_examples)
 
+        if verbose:
+            logger.info("Calculating distances..")
         # calculates distances between features
         distances = squareform(pdist(data, self.distance_metric))
         if np.isnan(distances).any():
@@ -180,7 +182,7 @@ class FRANe:
 
         # FRANe iterations
         solutions = []
-        for threshold in tqdm.tqdm(thresholds):
+        for threshold in tqdm.tqdm(thresholds, total=len(thresholds), colour='green'):
             distances_copy = distances.copy()
 
             # Weights on the edges: d_max - distance

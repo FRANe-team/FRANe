@@ -11,8 +11,6 @@ PageRank algorithm is than used to compute the centrality of the nodes
 (features) and the computed scores are interpreted as feature importance
 scores.
 
-![Overview of FRANe](https://github.com/FRANe-team/FRANe/blob/main/sketch.png)
-
 # Examplary Code Snippet
 The FRANe method is implemented in Python3.
 The implementation requires some standard scientific libraries

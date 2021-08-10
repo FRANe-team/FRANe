@@ -23,24 +23,6 @@ def normalize(x, metric):
     else:
         return x
 
-
-def load_data(data_file):
-    '''
-    Loads mat file from /data/ 
-
-    Parameters
-    ----------
-    data_file str 
-        FIlename of the mat file
-
-    Returns
-    --------
-    np.ndarray where rows are examples and colums are features
-    '''
-    return scipy.io.loadmat(data_file)["X"].astype(np.float32)
-
-
-# TODO - a pustimo, da žere in stringe in funkcije?
 convert_metrices = {
     'euclidean': euclidean,
     'canberra': canberra,

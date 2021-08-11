@@ -23,7 +23,8 @@ def normalize(x, metric):
     else:
         return x
 
-convert_metrices = {
+
+scipy_metrices = {
     'euclidean': euclidean,
     'canberra': canberra,
     'cityblock': cityblock,

@@ -5,7 +5,7 @@ import tqdm
 import logging
 from scipy.spatial.distance import pdist, squareform
 from .thresholds import threshold_dict
-from .helpers import normalize, convert_metrices
+from .helpers import normalize, scipy_metrices
 
 logging.basicConfig(format='%(asctime)s - %(message)s',
                     datefmt='%d-%b-%y %H:%M:%S')
@@ -39,16 +39,26 @@ class FRANe:
         ----------
 
             iterations int
-                number of iterations
+                number of different edge-weight thresholds
 
             metric : func or str
-                Metric to calculate distance
+                Metric (or its name for the predefined ones) to calculate distance
 
-            threshold_function - func or str  TODO ab šlo to stran?
-            threshold_function(min : float, max : float, iterations : int, distances : ndarray, sorted_indexes : ndarray) 
-                Should return ndarray of thresholds for FRANe network. TODO dopiš
+            threshold_function : func or str
+                Function (or its name for the predefined ones) that calculates different edge-weight thresholds.
+                If given as function f, it should have the signature
+                f(
+                    min_value: float,
+                    max_value: float,
+                    iterations: int,
+                    distances: np.ndarray
+                ) -> np.ndarray
+                where
+                - distances is a 2D array of shape (n, n), where n is the number of features in the data.
+                - the returned array is an 1D of shape (iterations, ) and contains the thresholds used by FRANE.
 
-            min_edge_threshold int TODO a naj gre stran?
+            min_edge_threshold int
+                The minimal average degree
 
             page_rank_decay float
                 Page rank decay factor
@@ -70,11 +80,24 @@ class FRANe:
         """
 
         # check if metric ot threshold function is known
-        if metric in convert_metrices.keys():
-            metric = convert_metrices[metric]
-
-        if threshold_function in threshold_dict.keys():
-            threshold_function = threshold_dict[threshold_function]
+        if isinstance(metric, str):
+            if metric in scipy_metrices.keys():
+                metric = scipy_metrices[metric]
+            else:
+                raise ValueError(
+                    f"Unknown metric ({metric}). "
+                    f"Use one of the following: {list(scipy_metrices.keys())} "
+                    f"or define your own metric as specified in the docstring."
+                )
+        if isinstance(threshold_function, str):
+            if threshold_function in threshold_dict.keys():
+                threshold_function = threshold_dict[threshold_function]
+            else:
+                raise ValueError(
+                    f"Unknown metric ({threshold_function}). "
+                    f"Use one of the following: {list(threshold_dict.keys())} "
+                    f"or define your own metric as specified in the docstring."
+                )
 
         # set variables
         self.iterations = iterations
@@ -90,29 +113,33 @@ class FRANe:
 
     @staticmethod
     def ranking_quality_heuristic(importance_scores):
-        '''      
+        """
+        Parameters
+        ----------
+            importance_scores : np.ndarray or list
+                The feature importance scores.
+
         Returns
         ---------
 
-        Quality of the scores.
-        '''
-        eps = 10**-10
+        Quality of the scores, based on their spread.
+        """
+        eps = 10 ** -10
         modified = [max(score, eps) for score in importance_scores]
         modified.sort(reverse=True)
         if len(importance_scores) <= 2:
             return modified[0] / modified[-1]
-
         else:
-
             # median of the top and bottom three scores
             return modified[1] / modified[-2]
 
-    def fit(self, data, transpose=True, verbose=0):
+    def fit(self, data, transpose=True, verbose=VERBOSE_LEVEL_NOTHING):
         """
         Computes feature ranking.
 
         Parameters
         ----------sorted
+
         data np.ndarray
             Data matrix, data[i, j] is the value of j-th feature for i-th example if transpose,
             and is the value of i-th feature for j-th example if not transpose
@@ -132,32 +159,7 @@ class FRANe:
         -------
             self
         """
-        return self.fit_page_rank(data, transpose=transpose, verbose=verbose)
 
-    def fit_page_rank(self, data, transpose=True, verbose=0):
-        """
-
-        Parameters
-        ----------
-        data np.ndarray
-            Data matrix, data[i, j] is the value of j-th feature for i-th example if transpose,
-            and is the value of i-th feature for j-th example if not transpose
-
-        transpose bool
-            Set this to True if and only if the columns in the data correspond to features
-            (and rows to the examples).
-
-        verbose int
-            Logging level\n
-            VERBOSE_LEVEL_NOTHING - no output\n
-            VERBOSE_LEVEL_BAR - show iteration progress bar\n
-            VERBOSE_LEVEL_VERBOSE - logs results of every iteration\n
-            other - no output
-
-        Returns
-        -------
-            self
-        """
         if transpose:
             data = np.transpose(data)
         n_features, n_examples = data.shape
@@ -166,14 +168,15 @@ class FRANe:
         for i in range(n_features):
             data[i] = normalize(data[i], self.distance_metric)
 
-            if self.distance_metric == convert_metrices["correlation"]:
+            if self.distance_metric == scipy_metrices["correlation"]:
+                # take care of constant features
                 i_min = np.min(data[i])
                 i_max = np.max(data[i])
                 if i_min == i_max:
                     # something that is not correlated to anything
                     data[i] = np.random.rand(n_examples)
 
-        if verbose in [VERBOSE_LEVEL_VERBOSE, VERBOSE_LEVEL_BAR] :
+        if verbose in [VERBOSE_LEVEL_VERBOSE, VERBOSE_LEVEL_BAR]:
             logger.info("Calculating distances..")
         # calculates distances between features
         distances = squareform(pdist(data, self.distance_metric))
@@ -184,18 +187,17 @@ class FRANe:
             raise ValueError("Distances must be non-negative")
 
         distances_copy = distances.copy()
-        sorted_indexes = np.argsort(distances, axis=None)
         d_max = np.max(distances, axis=None)
 
         # trick for non zero min
         distances_copy[distances_copy == 0.0] = d_max + 1.0
         d_min = np.min(distances_copy, axis=None)
-        thresholds = self.threshold_function(d_min, d_max, self.iterations,
-                                             distances, sorted_indexes)
+        thresholds = self.threshold_function(d_min, d_max, self.iterations, distances)
 
         # FRANe iterations
         solutions = []
-        for threshold in tqdm.tqdm(thresholds, total=len(thresholds), colour='green', disable=(not verbose==VERBOSE_LEVEL_BAR)):
+        show_progress = verbose == VERBOSE_LEVEL_BAR
+        for threshold in tqdm.tqdm(thresholds, total=len(thresholds), colour='green', disable=(not show_progress)):
             distances_copy = distances.copy()
 
             # Weights on the edges: d_max - distance
@@ -203,12 +205,11 @@ class FRANe:
             distances_copy[distances > threshold] = d_max
 
             if self.page_rank_no_weights:
-
-                # Make everything 1, so that all the weights are also (zero or) one
+                # Change edge weights to 0 or 1
                 distances_copy[distances_copy <= threshold] = 1.0
             weights = d_max - distances_copy
 
-            # ignore self-similarities of the node
+            # ignore self-similarities of the nodes
             np.fill_diagonal(weights, 0.0)
             degrees = np.sum(weights, axis=0)
             n_edges = np.sum(weights > 0.0)
@@ -218,21 +219,19 @@ class FRANe:
                 continue
             if verbose == VERBOSE_LEVEL_VERBOSE:
                 logger.info(
-                    f"Generated a |G| = {n_features} and |E| = {n_edges} graph.")
+                    f"Generated a graph (V, E), with |V| = {n_features} and |E| = {n_edges}."
+                )
             degrees[degrees == 0.0] = 1.0  # does not matter what
 
             # define matrix and vector from the page rank iteration
             matrix = self.page_rank_decay * (weights / degrees)
             del weights
-            vector = (1 - self.page_rank_decay) / \
-                n_features  # effectively a vector
-
+            vector = (1 - self.page_rank_decay) / n_features  # effectively a vector
             solution = np.ones(n_features) / n_features
             solution = solution / np.sum(solution)
             iterations = 0
-            eps = 10**-10
+            eps = 10 ** -10
             converged = False
-
             while iterations < self.page_rank_iterations:
                 iterations += 1
                 previous = solution.copy()
@@ -254,23 +253,19 @@ class FRANe:
             solutions.append((quality, threshold, not_enough_edges, solution))
 
         if self.save_all_scores:
-
             self.feature_importances_ = [
                 solution[-1] for solution in solutions
             ]
-
-            self.meta_data = [(solution[0], solution[2])
-                              for solution in solutions]
+            self.meta_data = [
+                (solution[0], solution[2]) for solution in solutions
+            ]
         else:
-
             # we want as large spread as possible
             solutions.sort(key=lambda triplet: -triplet[0])
             if not solutions:
-                if verbose == VERBOSE_LEVEL_VERBOSE:
+                if verbose != VERBOSE_LEVEL_NOTHING:
                     logger.error("No feature rankings!")
                 self.feature_importances_ = np.ones(n_features)
-
             else:
                 self.feature_importances_ = solutions[0][-1]
-
         return self

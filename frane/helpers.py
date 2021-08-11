@@ -1,5 +1,3 @@
-import scipy.io
-import numpy as np
 from scipy.spatial.distance import euclidean, canberra, cityblock, minkowski, \
     seuclidean, sqeuclidean, correlation, chebyshev
 

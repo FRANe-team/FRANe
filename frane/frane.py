@@ -18,10 +18,6 @@ VERBOSE_LEVEL_BAR = 1
 VERBOSE_LEVEL_VERBOSE = 2
 
 
-def set_value(value, default):
-    return default if value is None else value
-
-
 class FRANe:
     def __init__(self,
                  iterations=100,
@@ -42,11 +38,15 @@ class FRANe:
                 number of different edge-weight thresholds
 
             metric : func or str
-                Metric (or its name for the predefined ones) to calculate distance
+                Metric (or its name for the predefined ones) to calculate distance. If given as a function f,
+                it should have the signature
+                f(x1: np.ndarray, x2: np.ndarry) --> float
+                where x1 and x2 both have the shape (m, ) where m is the number of examples, i.e., x1 and x2 are
+                feature vectors.
 
             threshold_function : func or str
                 Function (or its name for the predefined ones) that calculates different edge-weight thresholds.
-                If given as function f, it should have the signature
+                If given as a function f, it should have the signature
                 f(
                     min_value: float,
                     max_value: float,
@@ -197,7 +197,10 @@ class FRANe:
         # FRANe iterations
         solutions = []
         show_progress = verbose == VERBOSE_LEVEL_BAR
-        for threshold in tqdm.tqdm(thresholds, total=len(thresholds), colour='green', disable=(not show_progress)):
+        show_message = verbose == VERBOSE_LEVEL_VERBOSE
+        for threshold in tqdm.tqdm(thresholds, total=len(thresholds), disable=(not show_progress)):
+            if show_message:
+                logger.info(f"Starting iteration with threshold {threshold}.")
             distances_copy = distances.copy()
 
             # Weights on the edges: d_max - distance
@@ -217,7 +220,7 @@ class FRANe:
 
             if not_enough_edges and not self.save_all_scores:
                 continue
-            if verbose == VERBOSE_LEVEL_VERBOSE:
+            if show_message:
                 logger.info(
                     f"Generated a graph (V, E), with |V| = {n_features} and |E| = {n_edges}."
                 )
@@ -240,7 +243,7 @@ class FRANe:
                 if np.max(np.abs(solution - previous)) < eps:
                     converged = True
                     break
-            if verbose == VERBOSE_LEVEL_VERBOSE:
+            if show_message:
                 if converged:
                     logger.info(
                         f"Procedure has converged after {iterations} iterations.")

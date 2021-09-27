@@ -27,7 +27,6 @@ r = frane.FRANe()
 r.fit(x)
 scores = r.feature_importances_
 print(scores)
-
 ```
 
 See `examples` for more examples. To run tests, please try `pytest ./tests/*`

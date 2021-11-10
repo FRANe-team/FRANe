@@ -10,7 +10,8 @@ converts a dataset into a network (graph) with
 PageRank algorithm is than used to compute the centrality of the nodes
 (features) and the computed scores are interpreted as feature importance
 scores.
-
+# Instalation
+Frane is avalible on pip via `pip install frane`
 # Examplary Code Snippet
 The FRANe method is implemented in Python3.
 The implementation requires some standard scientific libraries

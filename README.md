@@ -7,7 +7,7 @@ converts a dataset into a network (graph) with
 - undirected edges whose weights are proportional to the similarity
   between the two corresponding features.
 
-PageRank algorithm is than used to compute the centrality of the nodes
+PageRank algorithm is then used to compute the centrality of the nodes
 (features) and the computed scores are interpreted as feature importance
 scores.
 # Instalation

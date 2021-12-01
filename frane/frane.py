@@ -1,4 +1,4 @@
-# the FRANe algorithm -> skrlj, petkovic & primozic, 2020
+# the FRANe algorithm -> Primozic, Skrlj, Petkovic 2020
 
 import numpy as np
 import tqdm
@@ -228,7 +228,7 @@ class FRANe:
 
             # define matrix and vector from the page rank iteration
             matrix = self.page_rank_decay * (weights / degrees)
-            del weights
+#            del weights
             vector = (1 - self.page_rank_decay) / n_features  # effectively a vector
             solution = np.ones(n_features) / n_features
             solution = solution / np.sum(solution)
@@ -253,11 +253,11 @@ class FRANe:
                     )
 
             quality = FRANe.ranking_quality_heuristic(solution)
-            solutions.append((quality, threshold, not_enough_edges, solution))
+            solutions.append((quality, threshold, not_enough_edges, solution, weights))
 
         if self.save_all_scores:
             self.feature_importances_ = [
-                solution[-1] for solution in solutions
+                solution[-2] for solution in solutions
             ]
             self.meta_data = [
                 (solution[0], solution[2]) for solution in solutions
@@ -265,10 +265,11 @@ class FRANe:
         else:
             # we want as large spread as possible
             solutions.sort(key=lambda triplet: -triplet[0])
+            self.adjacency = solutions[0][-1]
             if not solutions:
                 if verbose != VERBOSE_LEVEL_NOTHING:
                     logger.error("No feature rankings!")
                 self.feature_importances_ = np.ones(n_features)
             else:
-                self.feature_importances_ = solutions[0][-1]
+                self.feature_importances_ = solutions[0][-2]
         return self
